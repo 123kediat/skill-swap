@@ -189,10 +189,54 @@
         .profile-input:focus, .payment-input:focus { border-color: var(--accent-color); outline: none; }
         .tag { background-color: var(--accent-color); color: var(--background-dark); }
         
-        .chat-bubble { max-width: 75%; padding: 0.75rem 1rem; border-radius: 1rem; }
+        .chat-bubble { max-width: 75%; padding: 0.75rem 1rem; border-radius: 1rem; word-wrap: break-word; }
         .chat-bubble.sent { background-color: var(--primary-color); align-self: flex-end; color: white; }
         .chat-bubble.received { background-color: var(--background-light); align-self: flex-start; }
         .chat-bubble.ai-generated { background-color: rgba(253, 141, 60, 0.2); border: 1px solid var(--accent-color); align-self: center; width: 95%; }
+        .chat-bubble.typing {
+            background-color: var(--background-light);
+            align-self: flex-start;
+            padding: 0.75rem 1rem;
+            display: flex;
+            gap: 0.25rem;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-secondary);
+            border-radius: 50%;
+            animation: typing-bounce 1.2s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+        .icebreaker-suggestions {
+            align-self: center;
+            width: 95%;
+            padding: 0.5rem;
+            border-radius: 1rem;
+            background-color: rgba(253, 141, 60, 0.2);
+            border: 1px solid var(--accent-color);
+        }
+        .icebreaker-btn {
+            background-color: var(--background-light);
+            color: var(--text-primary);
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .icebreaker-btn:hover {
+            background-color: var(--accent-color);
+            color: var(--background-dark);
+        }
+
 
         /* Premium Page Styles */
         #plan-toggle {
@@ -333,7 +377,10 @@
                         <button id="ai-plan-btn" class="gemini-btn flex-1 py-2 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">✨ Create Learning Plan</button>
                         <button id="ai-icebreaker-btn" class="gemini-btn flex-1 py-2 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">✨ Suggest Icebreaker</button>
                     </div>
-                    <input type="text" placeholder="Type a message..." class="w-full bg-gray-800 p-3 rounded-lg focus:outline-none focus:ring-2" style="border-color: var(--accent-color); color: var(--text-primary);">
+                    <div class="flex items-center gap-2">
+                        <input id="chat-input" type="text" placeholder="Type a message..." class="w-full bg-gray-800 p-3 rounded-lg focus:outline-none focus:ring-2" style="border-color: var(--accent-color); color: var(--text-primary);">
+                        <button id="send-btn" class="p-3 rounded-lg" style="background-color: var(--primary-color);"><i class="fas fa-paper-plane"></i></button>
+                    </div>
                 </div>
             </div>
 
@@ -352,9 +399,11 @@
                         </div>
                         <div id="pricing-card" class="rounded-2xl p-6 w-full max-w-sm text-center">
                             <div id="yearly-badge" class="badge hidden">BEST VALUE</div>
-                            <h2 id="plan-name" class="text-2xl font-semibold" style="color: var(--text-primary);">Monthly</h2>
-                            <p id="plan-price" class="mt-2 text-5xl font-bold">₹49<span class="text-gray-400 text-lg">/mo</span></p>
-                            <p id="plan-strikethrough" class="text-lg text-gray-500 line-through">₹89</p>
+                            <h2 id="plan-name" class="text-2xl font-semibold" style="color: var(--text-primary);"></h2>
+                            <div class="mt-2 flex justify-center items-end gap-2">
+                                <p id="plan-strikethrough" class="text-xl text-gray-500 line-through"></p>
+                                <p id="plan-price" class="text-5xl font-bold leading-none"></p>
+                            </div>
                             <button id="subscribe-btn" class="mt-6 w-full font-bold py-3 rounded-lg hover:opacity-90 transition" style="background-color: var(--primary-color); color: white;">Subscribe Now</button>
                         </div>
                         <div class="w-full max-w-sm">
@@ -596,6 +645,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const connectionsListEl = document.getElementById('connections-list');
     const chatHeaderEl = document.getElementById('chat-header');
     const chatMessagesEl = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
     const aiPlanBtn = document.getElementById('ai-plan-btn');
     const aiIcebreakerBtn = document.getElementById('ai-icebreaker-btn');
 
@@ -642,6 +693,45 @@ document.addEventListener('DOMContentLoaded', () => {
         ).join('');
         chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
     }
+
+    async function handleSendMessage(messageText) {
+        if (messageText.trim() === '' || !currentChatUserId) return;
+
+        conversations[currentChatUserId].push({ sender: 'me', text: messageText });
+        renderMessages(currentChatUserId);
+        chatInput.value = '';
+
+        await getBotReply(currentChatUserId);
+    }
+
+    sendBtn.addEventListener('click', () => handleSendMessage(chatInput.value));
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSendMessage(chatInput.value);
+        }
+    });
+
+    async function getBotReply(userId) {
+        const user = matches.find(m => m.id == userId);
+        const chatHistory = conversations[userId];
+
+        // Add typing indicator
+        const typingBubble = document.createElement('div');
+        typingBubble.className = 'chat-bubble typing';
+        typingBubble.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
+        chatMessagesEl.appendChild(typingBubble);
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+
+        const prompt = `You are ${user.name.split(',')[0]}, a mentor teaching ${user.skill}. The user, Alex Doe, is messaging you. Here is the conversation history:\n${chatHistory.map(m => `${m.sender === 'me' ? 'User' : 'You'}: ${m.text}`).join('\n')}\n\nRespond to the user's last message in a helpful, friendly, and encouraging tone. Keep your response to 1-2 sentences.`;
+        
+        const response = await callGemini(prompt, sendBtn);
+        
+        // Remove typing indicator and add bot response
+        chatMessagesEl.removeChild(typingBubble);
+        conversations[userId].push({ sender: 'them', text: response });
+        renderMessages(userId);
+    }
+
 
     // --- PROFILE CUSTOMIZATION ---
     const editBtn = document.getElementById('edit-profile-btn');
@@ -724,6 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
             yearlyBadge.classList.add('hidden');
             planName.textContent = 'Monthly';
             planPrice.innerHTML = `₹49<span class="text-gray-400 text-lg">/mo</span>`;
+            planStrikethrough.textContent = '₹89';
             planStrikethrough.classList.remove('hidden');
         } else { // yearly
             selectedPlan = { name: 'Yearly', price: '₹349' };
@@ -732,7 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
             yearlyBadge.classList.remove('hidden');
             planName.textContent = 'Yearly';
             planPrice.innerHTML = `₹349<span class="text-gray-400 text-lg">/yr</span>`;
-            planStrikethrough.classList.add('hidden');
+            planStrikethrough.textContent = '₹799';
+            planStrikethrough.classList.remove('hidden');
         }
     }
 
@@ -815,10 +907,32 @@ document.addEventListener('DOMContentLoaded', () => {
     aiIcebreakerBtn.addEventListener('click', async () => {
         const user = matches.find(m => m.id == currentChatUserId);
         if (!user) return;
-        const prompt = `Suggest three short, friendly, and distinct icebreaker messages for a user who wants to learn "${user.skill}" from a mentor named ${user.name.split(',')[0]}. The tone should be enthusiastic but respectful. Format the response as a simple list with each message on a new line.`;
+        const prompt = `Suggest three short, friendly, and distinct icebreaker messages for a user who wants to learn "${user.skill}" from a mentor named ${user.name.split(',')[0]}. The tone should be enthusiastic but respectful. Respond with a JSON object containing a single key "icebreakers" which is an array of strings. For example: {"icebreakers": ["message 1", "message 2", "message 3"]}`;
         const response = await callGemini(prompt, aiIcebreakerBtn);
-        conversations[currentChatUserId].push({ sender: 'ai', text: response.replace(/\n/g, '<br>') });
-        renderMessages(currentChatUserId);
+        
+        try {
+            const cleanedResponse = response.replace(/```json\n|```/g, '').trim();
+            const suggestions = JSON.parse(cleanedResponse).icebreakers;
+            const suggestionsContainer = document.createElement('div');
+            suggestionsContainer.className = 'icebreaker-suggestions';
+            
+            suggestions.forEach(text => {
+                const button = document.createElement('button');
+                button.className = 'icebreaker-btn';
+                button.textContent = text;
+                button.onclick = async () => {
+                    await handleSendMessage(text);
+                };
+                suggestionsContainer.appendChild(button);
+            });
+            chatMessagesEl.appendChild(suggestionsContainer);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+
+        } catch (e) {
+            console.error("Failed to parse icebreaker suggestions:", e);
+            conversations[currentChatUserId].push({ sender: 'ai', text: "I had some ideas, but couldn't format them properly. How about you start?" });
+            renderMessages(currentChatUserId);
+        }
     });
     
     aiBioBtn.addEventListener('click', async () => {
