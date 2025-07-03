@@ -21,7 +21,7 @@
         }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #2d3748; /* A neutral dark background for the page */
+            background-color: #000000; /* Black background */
             color: var(--text-primary);
             display: flex;
             align-items: center;
@@ -34,7 +34,7 @@
         /* Splash Screen Styles */
         #splash-screen {
             position: absolute;
-            inset: 1rem; /* Match parent padding */
+            inset: 0; /* Cover the entire frame */
             background-color: #5F5458; /* Muted background from image */
             display: flex;
             flex-direction: column;
@@ -42,7 +42,7 @@
             justify-content: center;
             z-index: 100;
             transition: opacity 0.8s ease-out;
-            border-radius: 30px; /* Match app container's inner radius */
+            border-radius: 0; /* Sharp corners */
         }
         .splash-logo {
             width: 100px;
@@ -91,20 +91,22 @@
             max-width: 414px; /* iPhone 8 Plus width */
             max-height: 896px; /* iPhone 11 Pro Max height */
             background-color: var(--background-dark);
-            border-radius: 40px;
+            border-radius: 0; /* Sharp corners */
             box-shadow: 0 0 40px rgba(0,0,0,0.5);
-            padding: 1rem;
+            padding: 0; /* No padding */
             display: flex;
             flex-direction: column;
             overflow: hidden;
             position: relative;
-            border: 8px solid #111;
+            border: 1px solid #333; /* Subtle border */
         }
         #app-container {
             flex: 1;
             position: relative;
             overflow: hidden;
-            border-radius: 30px;
+            border-radius: 0; /* Sharp corners */
+            display: flex;
+            flex-direction: column;
         }
         .page {
             position: absolute;
@@ -150,8 +152,10 @@
         }
         .card {
             position: absolute;
-            width: 85%;
+            width: 90vw;
             height: 95%;
+            max-width: 400px;
+            max-height: 600px;
             border-radius: 1.5rem;
             background-size: cover;
             background-position: center;
